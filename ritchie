@@ -1,0 +1,107 @@
+#!/bin/bash
+
+USAGE="./ritchie [extract_subs | burn_subs]"
+
+extract_subs(){
+	LOCAL_USAGE="input_file=[filename] output_file=[filename] (subtitle=[subtitle_id])"
+	if [ -z $input_file ]
+	then
+		echo $LOCAL_USAGE
+		return
+	fi
+	
+	if [ -z $output_file ]
+	then
+		echo $LOCAL_USAGE
+		return
+	fi
+	
+	if [ -z $subtitle ]
+	then
+		subtitle="0"
+	fi
+
+	ffmpeg -i $input_file -map 0:s:$subtitle $output_file
+}
+
+burn_subs_manual(){
+	LOCAL_USAGE="input_file=[filename] output_file=[filename] subtitle_file=[filename] (audio=[audio_id])"
+	if [ -z $input_file ]
+	then
+		echo $LOCAL_USAGE
+		return
+	fi
+	
+	if [ -z $output_file ]
+	then
+		echo $LOCAL_USAGE
+		return
+	fi
+
+	if [ -z $subtitle_file ]
+	then
+		echo $LOCAL_USAGE
+		return
+	fi
+	
+	if [ -z $audio ]
+	then
+		audio="0"
+	fi
+	
+	quality_params="-c:v libx264 -preset ultrafast -qp 18 -threads 8"
+
+	ffmpeg -i $input_file $quality_params -map 0:v:0 -map 0:a:$audio -vf subtitles=$subtitle_file $output_file
+}
+
+burn_subs(){
+	LOCAL_USAGE="input_file=[filename] (subtitle=[subtitle_id] audio=[audio_id])"
+	if [ -z $input_file ]
+	then
+		echo $LOCAL_USAGE
+		return
+	fi
+
+	if [ -z $output_file ]
+	then
+		output_file="burned_$input_file"
+	fi
+	
+	if [ -z $audio ]
+	then
+		audio="0"
+	fi
+
+	if [ -z $subtitle ]
+	then
+		audio="0"
+	fi
+	
+	original_output=$output_file
+
+	output_file="outsubs_$input_file"
+	extract_subs
+
+	subtitle_file=$output_file
+	output_file=$original_output
+	burn_subs_manual
+
+	rm -f $subtitle_file
+}
+
+if [ -z "$1" ]
+then
+	echo "$USAGE"
+else
+	command=$1
+	case $command in
+		extract_subs)
+			extract_subs $@;;
+		burn_subs)
+			burn_subs $@;;
+		burn_subs_manual)
+			burn_subs_manual $@;;
+		*)
+			echo $USAGE;;
+	esac
+fi
